@@ -1,32 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xmlns:security="http://www.springframework.org/schema/security"
-  xsi:schemaLocation="http://www.springframework.org/schema/security
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xsi:schemaLocation="http://www.springframework.org/schema/security
 http://www.springframework.org/schema/security/spring-security.xsd
 http://www.springframework.org/schema/beans
 http://www.springframework.org/schema/beans/spring-beans.xsd"
 >
-<security:http> <!-- 스프링 시큐리티가 http 인터넷 웹(www)에서 알 수 있게하는 시작 지점을 설정 -->
 
-  <security:intercept-url pattern="/sample/all" access="permitAll" />
-  <security:intercept-url pattern="/sample/member" access="hasRole('ROLE_MEMBER')"/>
-  <security:intercept-url pattern="/sample/admin" access="hasRole('ROLE_ADMIN')"/>
-  
-  <security:form-login/> <!-- 시큐리티 폼 로그인창 -->
-  <security:access-denied-handler error-page="/sample/all"/> <!-- 에러페이지 핸들러 -->
-</security:http>
+    <bean id="customAccessDenied" class="net.daum.security.CustomAccessDeniedHandler"/>
+    <!-- 403에러 핸들러를 위한 빈등록 (AccessDeniedHandler를 상속받은 403에러처리 클래스)-->
 
-<security:authentication-manager> 
-  <!-- 스프링 시큐리티가 동작하기 위해서는 authentication-manager(인증관리자) 설정이 필요-->
-  
-  <security:authentication-provider> <!-- 인증 제공자 -->
-    <security:user-service>
-      <security:user name="member" password="{noop}member" authorities="ROLE_MEMBER" />
-      <!-- {noop}는 비번을 인코딩(암호화)하지않고 사용 -->
-      <security:user name="admin" password="{noop}admin" authorities="ROLE_MEMBER, ROLE_ADMIN"/>
-    </security:user-service>
-  </security:authentication-provider>
-  
-</security:authentication-manager>
+    <bean id="customLoginSuccess" class="net.daum.security.CustomLoginSuccessHandler"/>
+    <!-- 로그인 성공시 호출될 빈 -->
+
+    <!--<bean id="customPasswordEncoder" class="net.daum.security.CustomerNoOpPasswordEncoder" />
+   PasswordEncoder를 구현한 커스텀객체 (비밀번호 인코딩 없이 저장/비교) 빈 -->
+
+    <bean id="bcryptPasswordEncoder" class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder"/>
+
+    <security:http> <!-- 스프링 시큐리티가 http 인터넷 웹(www)에서 알 수 있게하는 시작 지점을 설정 -->
+
+        <security:intercept-url pattern="/sample/all" access="permitAll"/>
+        <security:intercept-url pattern="/sample/member" access="hasRole('ROLE_MEMBER')"/>
+        <security:intercept-url pattern="/sample/admin" access="hasRole('ROLE_ADMIN')"/>
+
+        <!-- 사용자 정의 로그인 창 -->
+        <security:form-login login-page="/customLogin"
+                             authentication-success-handler-ref="customLoginSuccess"/>
+        <!-- <security:form-login/> 시큐리티 폼 로그인 창  -->
+        <!-- 성공시 customLoginSuccess 빈 호출 -->
+
+        <!-- <security:access-denied-handler error-page="/accessError"/> -->
+        <!-- 에러페이지(403 인가 오류) 핸들러 -->
+        <security:access-denied-handler ref="customAccessDenied"/>
+        <!-- 403오류발생시 ref(빈객체) 호출 -->
+
+        <security:logout logout-url="/customLogout" invalidate-session="true"/>
+        <!-- 로그아웃시 /customLogout 호출되고 세션만료시킴. -->
+
+    </security:http>
+
+
+    <!-- 메모리 인증관리자 -->
+    <security:authentication-manager>
+        <!-- 스프링 시큐리티가 동작하기 위해서는 authentication-manager(인증관리자) 설정이 필요-->
+        <security:authentication-provider> <!-- 인증 제공자 -->
+
+            <security:user-service>
+                <security:user name="member" password="{noop}member" authorities="ROLE_MEMBER"/>
+                <!-- {noop}는 비번을 인코딩(암호화)하지않고 사용 -->
+                <security:user name="admin" password="{noop}admin" authorities="ROLE_MEMBER, ROLE_ADMIN"/>
+            </security:user-service>
+
+        </security:authentication-provider>
+    </security:authentication-manager>
+
+
+    <!-- 데이터베이스 인증관리자 -->
+    <security:authentication-manager>
+        <security:authentication-provider> <!-- 인증제공자 -->
+            <!-- <security:jdbc-user-service data-source-ref="dataSource"/> -->
+            <!-- root-context.xml에 설정된 dataSource 빈 주입(OracleDB) -->
+            <!-- Spring Security4이후부터는 비밀번호 암호화없이 사용하면 오류가 남.
+                 There is no PasswordEncoder mapped for the id “null”
+                 오류가 발생하면 비번을 암호화 해서 처리하면 된다.
+            -->
+
+            <!--<security:password-encoder ref="customPasswordEncoder" />
+            암호화없이 비밀번호 인증-->
+
+            <security:password-encoder ref="bcryptPasswordEncoder"/>
+            <!-- BCrypt 해싱 함수를 사용하여 비밀번호 인코딩 -->
+
+            <security:jdbc-user-service data-source-ref="dataSource"
+                   users-by-username-query=
+                       "select userid,userpw,enabled from tbl_member where userid=?"
+                   authorities-by-username-query=
+                       "select userid,auth from tbl_member_auth where userid=?"/>
+
+        </security:authentication-provider>
+    </security:authentication-manager>
+
 </beans>
