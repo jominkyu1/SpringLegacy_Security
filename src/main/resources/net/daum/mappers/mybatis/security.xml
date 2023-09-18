@@ -4,5 +4,36 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="Security">
-  
+  <resultMap id="memberMap" type="member">
+    <!-- type은 반환 자료형(mybatis-config에서 정의한 member별칭을 넣음) -->
+    <id property="userid" column="userid" /> <!-- id는 구분자(PK) -->
+    <result property="userid" column="userid" />
+    <result property="userpw" column="userpw" />
+
+    <result property="userName" column="username" />
+    <!-- property 속성값은 MemberVO의 속성명 column 속성값은 해당 테이블의 컬럼명
+         주로 빈클래스 변수명과 테이블컬럼명이 다른경우 사용! (1:1매핑이 안되기때문)
+    -->
+    <result property="regDate" column="regdate" />
+    <!-- 테이블로부터 레코드를 가져와 setter()메서드를 호출해서 값을 저장 시키는 방식-->
+    <result property="updateDate" column="updatedate" />
+
+    <collection property="authList" resultMap="authMap" />
+    <!-- 복수개의 AuthVO를 저장하기위해 collection사용
+         authList의 타입::: List<AuthVO>
+    -->
+  </resultMap>
+
+  <resultMap id="authMap" type="authvo">
+    <result property="userid" column="userid" />
+    <result property="auth" column="auth" />
+  </resultMap>
+
+  <select id="readMem" parameterType="java.lang.String" resultMap="memberMap">
+    select mem.userid, userpw, username, enabled, regdate, updatedate, auth
+    from tbl_member mem left outer join tbl_member_auth auth
+    on mem.userid = auth.userid where mem.userid=#{userid}
+        <!-- left outer join기법은 from절 다음에 테이블명을 기술할 때 왼쪽, 오른쪽 기술하는데
+             오른쪽 테이블에 데이터가 없는경우 사용하는 조인기법-->
+  </select>
 </mapper>

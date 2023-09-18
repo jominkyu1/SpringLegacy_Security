@@ -29,7 +29,7 @@ public class CommonController {
 		
 		while(parameters.hasMoreElements()) {
 			String str = parameters.nextElement();
-			System.out.println("PARAMETER ::: " + str + " : " + request.getParameter(str));
+			System.out.println("LOGIN PARAMETER ::: " + str + " : " + request.getParameter(str));
 		}
 		
 		if(error != null) {
@@ -37,6 +37,7 @@ public class CommonController {
 		}
 		
 		if(logout != null) {
+			System.out.println("--로그아웃--");
 			model.addAttribute("logout", "Logout!!");
 		}
 	}
